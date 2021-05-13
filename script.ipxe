@@ -1,6 +1,9 @@
 #!ipxe
 
 # Vars:
+# These are PCI-SIG Device and Vendor IDs that define udev rules on-the-fly.
+# The early udev rules allow developers and users to set expectations
+# for a nodes state (e.g. interface names, and available hardware such as HSN).
 set mgmt_vid0 15b3
 set mgmt_vid1 1077
 set hsn_did0 1017
@@ -22,15 +25,14 @@ set disk-opts rd.luks rd.luks.crypttab=0 rd.lvm.conf=0 rd.lvm=1 rd.auto=1 rd.md=
 set ncn-params pcie_ports=native transparent_hugepage=never console=tty0 console=ttyS0,115200 iommu=pt ${bootstrap} ${cloud-init} ${boot-opts} ${live-sqfs-opts} ${live-oval-opts} ${disk-opts}
 
 # NCN DHCP parameters:
+set net-ip-params rd.net.timeout.carrier=120 rd.net.timeout.ifup=120 rd.net.timeout.iflink=120 rd.net.dhcp.retry=3 rd.net.timeout.ipv6auto=0 rd.net.timeout.ipv6dad=0
+
+# Networking parameters :
+# - do not set rd.bootif=1 it is legacy and unused
+# - set bootdev when netbooting; always set bootdev, remove it from grub.cfg if you see it in the field.
 # Help for replacing bootdev:
 # sed -i '/bootdev=.*/bootdev=lan0' /var/www/boot/script.ipxe
-set net-ip-params ip=vlan007:dhcp ip=vlan004:dhcp ip=vlan002:dhcp bootdev=vlan002 rd.net.timeout.carrier=120 rd.net.timeout.ifup=120 rd.net.timeout.iflink=120 rd.net.dhcp.retry=3 rd.net.timeout.ipv6auto=0 rd.net.timeout.ipv6dad=0
-
-# VLAN Parameters:
-set net-vlan-params vlan=vlan007:bond0 vlan=vlan004:bond0 vlan=vlan002:bond0
-
-# Networking parameters:
-set net-params rd.bootif=0 hostname=${hostname} ${net-vlan-params} ${net-ip-params}
+set net-params bootdev=bond0 ip=bond0:dhcp rd.bootif=0 hostname=${hostname} ${net-ip-params}
 
 # Parameters for CI/CD to ad-hoc replace (null by default):
 # Good for "always-on" params for automation.
@@ -97,9 +99,9 @@ iseq ${dual-bond} 1 && set net-bond-params bond=bond0:mgmt0,mgmt2:mode=802.3ad,m
 # FIXME: CASMINST-715 when ready to enable bond1, comment out the above line and uncomment the line below.
 #iseq ${dual-bond} 1 && set net-bond-params bond=bond0:mgmt2:mode=802.3ad,miimon=100,lacp_rate=fast,xmit_hash_policy=layer2+3:9000 hwprobe=+200:*:*:bond0 bond=bond1:mgmt1,mgmt3:mode=802.3ad,miimon=100,lacp_rate=fast,xmit_hash_policy=layer2+3:9000 hwprobe=+200:*:*:bond1 ip=bond1:auto6 || set net-bond-params bond=bond0:mgmt1:mode=802.3ad,miimon=100,lacp_rate=fast,xmit_hash_policy=layer2+3:9000 hwprobe=+200:*:*:bond0
 
-#echo ====NTP=================================================================
-#ntp ${3:ipv4} || echo Ignoring...
-#echo ========================================================================
+echo ====NTP=================================================================
+ntp pit.mtl || echo Ignoring...
+echo ========================================================================
 
 # Figure out if client is 64-bit capable
 cpuid --ext 29 && set arch x86_64 || set arch x86
