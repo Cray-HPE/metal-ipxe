@@ -4,8 +4,11 @@
 # These are PCI-SIG Device and Vendor IDs that define udev rules on-the-fly.
 # The early udev rules allow developers and users to set expectations
 # for a nodes state (e.g. interface names, and available hardware such as HSN).
-set mgmt_vid0 15b3
-set mgmt_vid1 1077
+set mgmt_vididx:int8 0
+set hsn_vididx:int8 0
+set mgmt_vid0 15b3 # Mellanox
+set mgmt_vid1 1077 # QLogic
+#set mgmt_vid2 8086 # Intel
 set hsn_did0 1017
 set ignore ffff
 
@@ -72,8 +75,8 @@ set odd 0
   set device_id ${pci/${net${idx}/busloc}.2.2}
   iseq ${device_id} ${ignore} && inc idx && goto loop ||
   iseq ${device_id} ${hsn_did0} && goto hsn ||
-  iseq ${vendor_id} ${mgmt_vid0} && goto mgmt ||
-  iseq ${vendor_id} ${mgmt_vid1} && goto mgmt ||
+  :mgmtloop isset ${mgmt_vid${mgmt_vididx}} || goto lan
+    iseq ${vendor_id} ${mgmt_vid${mgmt_vididx}} && inc mgmt_vididx && goto mgmt || goto mgmtloop
   goto lan ||
   inc idx && goto loop
 
